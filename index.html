@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFS Missions Perpetual Calendar</title>
+    <style>
+        :root {
+            --bg-window: #1e1e1e;
+            --bg-sidebar: #262626;
+            --bg-grid-gap: #3c3c3c;
+            --bg-cell: #232323;
+            --bg-cell-other: #1a1a1a;
+            --text-main: #ffffff;
+            --text-muted: #757575;
+            --text-week: #555555;
+            --accent-red: #ff453a;
+            
+            /* macOS Control Colors */
+            --mac-close: #ff5f56;
+            --mac-min: #ffbd2e;
+            --mac-max: #27c93f;
+
+            /* Mission Type Colors - Apple Precedence Order */
+            --mac-brown: #a2845e;
+            --mac-yellow: #ffcc00;
+            --mac-blue: #007aff;
+            --mac-green: #34c759;
+            --mac-red: #ff3b30;
+            --mac-purple: #af52de;
+            --mac-orange: #ff9500;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000;
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .calendar-window {
+            width: 100%;
+            max-width: 1400px;
+            height: 100%;
+            background-color: var(--bg-window);
+            border-radius: 10px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid #111;
+            display: flex;
+            flex-direction: column;
+            padding-top: 15px;
+            flex-shrink: 0;
+        }
+
+        .mac-controls { display: flex; gap: 8px; padding-left: 15px; margin-bottom: 30px; }
+        .mac-btn { width: 12px; height: 12px; border-radius: 50%; }
+        .mac-close { background-color: var(--mac-close); }
+        .mac-min { background-color: var(--mac-min); }
+        .mac-max { background-color: var(--mac-max); }
+
+        .sidebar-section { padding: 0 15px; }
+        .sidebar-title { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 10px; font-weight: 600; }
+        
+        .filter-item { display: flex; align-items: center; padding: 6px 0; font-size: 13px; color: #ddd; }
+        .filter-item input[type="checkbox"] {
+            margin: 0 8px 0 0; appearance: none; width: 14px; height: 14px;
+            border: 1px solid #555; border-radius: 3px; background: transparent; cursor: pointer; position: relative;
+        }
+        .filter-item input[type="checkbox"]:checked { background-color: var(--mac-blue); border-color: var(--mac-blue); }
+        .filter-item input[type="checkbox"]:checked::after {
+            content: ''; position: absolute; left: 4px; top: 1px;
+            width: 3px; height: 7px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
+        }
+        .filter-item .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0;}
+        .filter-item label { cursor: pointer; flex-grow: 1; user-select: none; }
+
+        .main-view {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-window);
+        }
+
+        /* Toolbar */
+        .toolbar {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+            border-bottom: 1px solid #111;
+        }
+
+        .month-title { font-size: 26px; font-weight: 700; letter-spacing: 0.5px; margin: 0; }
+        .month-title span { font-weight: 400; color: #aaa; margin-left: 5px; }
+
+        .nav-group { display: flex; background: #1e1e1e; border-radius: 6px; border: 1px solid #333; overflow: hidden; }
+        .nav-btn { background: transparent; border: none; color: #fff; padding: 4px 12px; font-size: 13px; cursor: pointer; border-right: 1px solid #333; }
+        .nav-btn:last-child { border-right: none; }
+        .nav-btn:hover { background: #333; }
+
+        /* Calendar Grid Header */
+        .grid-header {
+            display: grid;
+            grid-template-columns: 25px repeat(7, 1fr);
+            padding: 10px 0 5px 0;
+            background-color: var(--bg-window);
+            border-bottom: 1px solid var(--bg-grid-gap);
+        }
+        .day-name { text-align: right; padding-right: 10px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+
+        /* Calendar Body */
+        .scroll-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+        }
+
+        .calendar-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-grid-gap);
+            gap: 1px;
+        }
+
+        .week-row {
+            flex: 1 1 auto; /* Allows dynamic height scaling */
+            display: flex;
+            position: relative;
+            background-color: var(--bg-grid-gap);
+            gap: 1px;
+        }
+
+        .week-number-col {
+            width: 25px;
+            background-color: var(--bg-window);
+            color: var(--text-week);
+            font-size: 10px;
+            padding: 5px 0 0 5px;
+            box-sizing: border-box;
+        }
+
+        .week-cells {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+        }
+
+        .cell {
+            background-color: var(--bg-cell);
+            position: relative;
+        }
+        .cell.other-month { background-color: var(--bg-cell-other); }
+        .cell.other-month .date-num { color: var(--text-muted); }
+
+        .date-num {
+            text-align: right;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 5px 5px 0 0;
+            margin-bottom: 5px;
+        }
+        .date-num.today { color: #fff; }
+        .date-num.today span {
+            background-color: var(--accent-red);
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Absolute Positioned Event Spans */
+        .events-layer {
+            position: absolute;
+            top: 0;
+            left: 26px; /* Width of week col + gap */
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .event-span {
+            position: absolute;
+            height: 18px;
+            line-height: 18px;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 0 6px;
+            border-radius: 4px;
+            color: #fff;
+            pointer-events: auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+        }
+
+        .event-span:hover { filter: brightness(1.1); }
+
+        /* Modifier classes for spans that break across weeks */
+        .event-span.no-left-radius {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-left: none;
+        }
+        .event-span.no-right-radius {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: none;
+        }
+
+        /* Background Colors mapping */
+        .type-crew-modes { background-color: var(--mac-brown); color: #fff; }
+        .type-crew { background-color: var(--mac-yellow); color: #000; }
+        .type-ugr { background-color: var(--mac-blue); }
+        .type-se { background-color: var(--mac-green); }
+        .type-1day { background-color: var(--mac-red); }
+        .type-2day { background-color: var(--mac-purple); }
+        .type-3day { background-color: var(--mac-orange); }
+
+        /* Mobile RWD */
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            .calendar-window { flex-direction: column; border-radius: 0; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #111; padding: 15px; box-sizing: border-box; }
+            .mac-controls { display: none; }
+            .sidebar-section { padding: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+            .sidebar-title { width: 100%; margin-bottom: 5px; }
+            .filter-item { padding: 0; margin-right: 5px; }
+            
+            .grid-header, .calendar-body { min-width: 800px; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="calendar-window">
+    <div class="sidebar">
+        <div class="mac-controls">
+            <div class="mac-btn mac-close"></div>
+            <div class="mac-btn mac-min"></div>
+            <div class="mac-btn mac-max"></div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-title">Categories</div>
+            
+            <div class="filter-item">
+                <input type="checkbox" id="f-crew-modes" class="filter-cb" data-filter="type-crew-modes">
+                <span class="dot" style="background-color: var(--mac-brown);"></span>
+                <label for="f-crew-modes">Crew (UGR / TT / SE)</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-crew" class="filter-cb" data-filter="type-crew" checked>
+                <span class="dot" style="background-color: var(--mac-yellow);"></span>
+                <label for="f-crew">Crew</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-ugr" class="filter-cb" data-filter="type-ugr" checked>
+                <span class="dot" style="background-color: var(--mac-blue);"></span>
+                <label for="f-ugr">UGR</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-se" class="filter-cb" data-filter="type-se" checked>
+                <span class="dot" style="background-color: var(--mac-green);"></span>
+                <label for="f-se">Special Event</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-1day" class="filter-cb" data-filter="type-1day" checked>
+                <span class="dot" style="background-color: var(--mac-red);"></span>
+                <label for="f-1day">1 Day</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-2day" class="filter-cb" data-filter="type-2day" checked>
+                <span class="dot" style="background-color: var(--mac-purple);"></span>
+                <label for="f-2day">2 Day</label>
+            </div>
+            <div class="filter-item">
+                <input type="checkbox" id="f-3day" class="filter-cb" data-filter="type-3day" checked>
+                <span class="dot" style="background-color: var(--mac-orange);"></span>
+                <label for="f-3day">3 Day</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-view">
+        <div class="toolbar">
+            <div class="month-title" id="month-title">August<span>2026</span></div>
+            <div class="nav-group">
+                <button class="nav-btn" id="btn-prev">❮</button>
+                <button class="nav-btn" id="btn-today">Today</button>
+                <button class="nav-btn" id="btn-next">❯</button>
+            </div>
+        </div>
+
+        <div class="scroll-wrapper">
+            <div class="grid-header">
+                <div></div>
+                <div class="day-name">Mon</div>
+                <div class="day-name">Tue</div>
+                <div class="day-name">Wed</div>
+                <div class="day-name">Thu</div>
+                <div class="day-name">Fri</div>
+                <div class="day-name">Sat</div>
+                <div class="day-name">Sun</div>
+            </div>
+
+            <div class="calendar-body" id="calendar-body">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+        // Active filters tracking (type-crew-modes is intentionally omitted to hide by default)
+    let activeFilters = new Set(["type-crew", "type-ugr", "type-se", "type-1day", "type-2day", "type-3day"]);
+
+    document.querySelectorAll(".filter-cb").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+            const filterType = e.target.getAttribute("data-filter");
+            if (e.target.checked) {
+                activeFilters.add(filterType);
+            } else {
+                activeFilters.delete(filterType);
+            }
+            renderCalendar();
+        });
+    });
+
+    // Global anchor: Sunday Aug 9, 2026 18:30 UTC
+    // This is the exact moment the "Monday" mission starts globally (02:30 AM Taiwan time).
+    const anchorTimestamp = Date.UTC(2026, 7, 9, 18, 30, 0);
+    
+    function mod(n, m) { return ((n % m) + m) % m; }
+
+    function getMissionsWithDuration(missionIndex) {
+        const W = Math.floor(missionIndex / 7);
+        // missionIndex=0 -> Monday -> day=1
+        // missionIndex=6 -> Sunday -> day=0
+        const day = mod(missionIndex + 1, 7);
+        let m = [];
+        
+        if (day === 1) { // Mon
+            const m3 = mod(W, 3);
+            if(m3===0) m.push({t:"💰 Earn 80K cash [10 SC]", c:"type-1day", d:1});
+            if(m3===1) m.push({t:"💸 Spend 100K cash [30 SC]", c:"type-1day", d:1});
+            if(m3===2) m.push({t:"🛢️ Consume 25 fuel [30 SC]", c:"type-1day", d:1});
+            m.push({t:"🔺 UGR Driver 4 tiers [20 SC]", c:"type-ugr", d:2});
+            m.push({t:"🔺 UGR 6 tiers [60 SC]", c:"type-ugr", d:3});
+        } else if (day === 2) { // Tue
+            const m6 = mod(W, 6);
+            const carMap = ["✈️ Tuner Trials (airtime 60s)", "🚘 Bugatti (near miss 40)", "✈️ Porsche (airtime 60s)", "🚘 Ferrari (near miss 40)", "✈️ Lamborghini (airtime 60s)", "🚘 Koenigsegg (near miss 40)"];
+            m.push({t: carMap[m6] + " [50 SC]", c: "type-2day", d:2});
+            const m4 = mod(W, 4);
+            const taskMap = ["🚀 Nitro 360s", "🚘 Near miss 30", "🛞 Drift 24K m", "✈️ Airtime 30s"];
+            m.push({t: taskMap[m4] + " [40 SC]", c: "type-3day", d:3});
+        } else if (day === 3) { // Wed
+            const m2 = mod(W, 2);
+            if(m2===0) m.push({t:"🚀 Crew UGR Nitro 60K s [40 SC]", c:"type-crew-modes", d:5});
+            else m.push({t:"🛞 Crew UGR Drift 600K m [40 SC]", c:"type-crew-modes", d:5});
+        } else if (day === 4) { // Thu
+            m.push({t:"🏆 Crew Win 600 SE races [40 SC]", c:"type-crew-modes", d:5});
+            const m3 = mod(W, 3);
+            if(m3===0) m.push({t:"💰 Earn 100K SE cash [50 SC]", c:"type-se", d:5});
+            if(m3===1) m.push({t:"🎫 Use 45 SE tickets [50 SC]", c:"type-se", d:5});
+            if(m3===2) m.push({t:"💸 Spend 120K SE cash [50 SC]", c:"type-se", d:5});
+        } else if (day === 5) { // Fri
+            const m3 = mod(W, 3);
+            if(m3===0) m.push({t:"💰 Earn 80K cash [10 SC]", c:"type-1day", d:1});
+            if(m3===1) m.push({t:"💸 Spend 100K cash [30 SC]", c:"type-1day", d:1});
+            if(m3===2) m.push({t:"🛢️ Consume 25 fuel [30 SC]", c:"type-1day", d:1});
+            const m4 = mod(W, 4);
+            const taskMap = ["🛞 Drift 24K m", "✈️ Airtime 30s", "🚀 Nitro 360s", "🚘 Near miss 30"];
+            m.push({t: taskMap[m4] + " [40 SC]", c: "type-3day", d:3});
+        } else if (day === 6) { // Sat
+            const m6 = mod(W, 6);
+            const carMap = ["✈️ Classic Sports (airtime 60s)", "🚘 Hyper (near miss 40)", "✈️ Sports (airtime 60s)", "🚘 Street (near miss 40)", "✈️ Super (airtime 60s)", "🚘 Muscle (near miss 40)"];
+            m.push({t: carMap[m6] + " [50 SC]", c: "type-2day", d:2});
+            
+            // Restored 7-day task
+            m.push({t:"🛢️ Crew TT Consume 240 fuel [20 SC]", c:"type-crew-modes", d:7});
+        } else if (day === 0) { // Sun
+            const m3 = mod(W, 3);
+            const ugrMap = ["Driver", "Speedster", "Breakneck"];
+            m.push({t: `🏆 UGR ${ugrMap[m3]} Win 12 races [30 SC]`, c: "type-ugr", d:1});
+            const m2 = mod(W, 2);
+            if(m2===0) m.push({t:"🏆 Crew Win 750 races [20 SC]", c:"type-crew", d:5});
+            else m.push({t:"📦 Crew Open 300 crates [20 SC]", c:"type-crew", d:5});
+        }
+        return m;
+    }
+
+    let currentDate = new Date(); 
+    
+    function isActiveMission(missionIndex) {
+        const currentMissionIndex = Math.floor((Date.now() - anchorTimestamp) / 86400000);
+        return missionIndex === currentMissionIndex;
+    }
+
+    function getISOWeekNumber(d) {
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    function renderCalendar() {
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        document.getElementById("month-title").innerHTML = `${monthNames[month]}<span>${year}</span>`;
+
+        const body = document.getElementById("calendar-body");
+        body.innerHTML = '';
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        let startDay = firstDayOfMonth.getDay();
+        let diff = startDay === 0 ? 6 : startDay - 1; 
+
+        // visibleStart is the first cell of the 42-day grid
+        let visibleStart = new Date(year, month, 1 - diff);
+        
+        // Generate all events ranging from visibleStart - 7 days to visibleStart + 42 days
+        let genStart = new Date(visibleStart);
+        genStart.setDate(genStart.getDate() - 7);
+        let genEnd = new Date(visibleStart);
+        genEnd.setDate(genEnd.getDate() + 42);
+
+        let allEvents = [];
+        let curr = new Date(genStart);
+        let eventIdCounter = 0;
+        while(curr < genEnd) {
+            let currNoon = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 12, 0, 0);
+            let diffMs = currNoon.getTime() - anchorTimestamp;
+            let missionIndex = Math.floor(diffMs / 86400000);
+            const missions = getMissionsWithDuration(missionIndex);
+            missions.forEach(m => {
+                if(activeFilters.has(m.c)) {
+                    allEvents.push({
+                        id: eventIdCounter++,
+                        title: m.t,
+                        cls: m.c,
+                        start: new Date(curr),
+                        duration: m.d
+                    });
+                }
+            });
+            curr.setDate(curr.getDate() + 1);
+        }
+
+        let currDay = new Date(visibleStart);
+
+        for (let week = 0; week < 6; week++) {
+            let weekStart = new Date(currDay);
+            let weekEnd = new Date(currDay);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            // Filter events that intersect this week
+            let thisWeekEvents = [];
+            allEvents.forEach(evt => {
+                let evtEnd = new Date(evt.start);
+                evtEnd.setDate(evtEnd.getDate() + evt.duration - 1);
+                
+                if (evtEnd >= weekStart && evt.start <= weekEnd) {
+                    let startIdx = evt.start < weekStart ? 0 : Math.round((evt.start - weekStart)/86400000);
+                    let endIdx = evtEnd > weekEnd ? 6 : Math.round((evtEnd - weekStart)/86400000);
+                    
+                    thisWeekEvents.push({
+                        evt: evt,
+                        startCol: startIdx,
+                        len: endIdx - startIdx + 1,
+                        continuedFrom: evt.start < weekStart,
+                        continuingTo: evtEnd > weekEnd
+                    });
+                }
+            });
+
+            // Sort logic: earlier start, then longer duration
+            thisWeekEvents.sort((a, b) => {
+                if(a.startCol !== b.startCol) return a.startCol - b.startCol;
+                return b.len - a.len;
+            });
+
+            // Slot allocation
+            let slots = []; 
+            thisWeekEvents.forEach(seg => {
+                let slotIdx = 0;
+                let found = false;
+                while(!found) {
+                    if(!slots[slotIdx]) slots[slotIdx] = [false,false,false,false,false,false,false];
+                    let canFit = true;
+                    for(let i=seg.startCol; i < seg.startCol + seg.len; i++) {
+                        if(slots[slotIdx][i]) canFit = false;
+                    }
+                    if(canFit) {
+                        found = true;
+                        for(let i=seg.startCol; i < seg.startCol + seg.len; i++) {
+                            slots[slotIdx][i] = true;
+                        }
+                        seg.slot = slotIdx;
+                    } else {
+                        slotIdx++;
+                    }
+                }
+            });
+
+            // Calculate min-height based on slots to prevent overlap/cutoff
+            let maxSlot = slots.length;
+            let minHeight = Math.max(100, 28 + maxSlot * 21); // 28px top padding + 21px per slot
+
+            let weekHtml = `<div class="week-row" style="min-height: ${minHeight}px;">
+                <div class="week-number-col">${getISOWeekNumber(currDay)}</div>
+                <div class="week-cells">`;
+
+            for(let d=0; d<7; d++) {
+                let isOtherMonth = currDay.getMonth() !== month;
+                
+                let cellNoon = new Date(currDay.getFullYear(), currDay.getMonth(), currDay.getDate(), 12, 0, 0);
+                let diffMs = cellNoon.getTime() - anchorTimestamp;
+                let missionIndex = Math.floor(diffMs / 86400000);
+                let isTodayBool = isActiveMission(missionIndex);
+                let todayCls = isTodayBool ? "today" : "";
+                
+                weekHtml += `<div class="cell ${isOtherMonth ? 'other-month' : ''}">
+                    <div class="date-num ${todayCls}">${isTodayBool ? `<span>${currDay.getDate()}</span>` : currDay.getDate()}</div>
+                </div>`;
+                currDay.setDate(currDay.getDate() + 1);
+            }
+            weekHtml += `</div><div class="events-layer">`;
+
+            // Generate HTML for segments
+            thisWeekEvents.forEach(seg => {
+                let leftPercent = (seg.startCol / 7) * 100;
+                let widthPercent = (seg.len / 7) * 100;
+                
+                let topPx = 28 + seg.slot * 21; 
+                
+                let extraClass = '';
+                if(seg.continuedFrom) {
+                    extraClass += ' no-left-radius';
+                    leftPercent -= 0.1; 
+                    widthPercent += 0.1;
+                }
+                if(seg.continuingTo) {
+                    extraClass += ' no-right-radius';
+                    widthPercent += 0.1;
+                }
+
+                let widthStr = seg.continuingTo ? `calc(${widthPercent}%)` : `calc(${widthPercent}% - 4px)`;
+                
+                // Show title even if it's continued from previous week (wrapping to Monday)
+                let titleStr = seg.evt.title;
+
+                weekHtml += `<div class="event-span ${seg.evt.cls} ${extraClass}" 
+                    style="left: ${leftPercent}%; width: ${widthStr}; top: ${topPx}px;"
+                    title="${seg.evt.title}">
+                    ${titleStr}
+                </div>`;
+            });
+
+            weekHtml += `</div></div>`;
+            body.innerHTML += weekHtml;
+        }
+    }
+
+    document.getElementById("btn-prev").addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    });
+
+    document.getElementById("btn-next").addEventListener("click", () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    });
+
+    document.getElementById("btn-today").addEventListener("click", () => {
+        currentDate = new Date();
+        renderCalendar();
+    });
+
+    renderCalendar();
+
+</script>
+</body>
+</html>
