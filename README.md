@@ -19,8 +19,9 @@ future, and plan around the missions before they arrive.
   can see at a glance what overlaps with what and how much time is left.
 - **Today is highlighted** using the game's global reset (18:30 UTC), not your device's
   midnight — so the "current" mission is right wherever you are.
-- **Filters in the sidebar.** Untick the mission types you don't chase. Crew missions
-  locked to a mode (UGR / Tuner Trials / Special Event) start hidden.
+- **Filters in the sidebar, and they stick.** Untick the mission types you don't chase
+  and the calendar remembers next time. Crew missions locked to a mode (UGR / Tuner
+  Trials / Special Event) start hidden.
 - **Week numbers** down the left edge, matching Apple Calendar and any other ISO
   calendar.
 
@@ -97,8 +98,12 @@ airtime 60s**, the 3-day tasks want **near miss 30 / airtime 30s**.
 
 ## Running it yourself
 
-The whole thing is one `index.html` — no build, no dependencies, no tracking. Download
-it and open it in any browser, online or off.
+The whole thing is one `index.html` — no build, no dependencies, no analytics, no
+network calls. Download it and open it in any browser, online or off.
+
+The only thing it stores is which sidebar filters you ticked, kept in your own
+browser's `localStorage`. It never leaves your device, and clearing your site data
+resets it.
 
 It's built for a desktop-sized window. It opens on a phone, but the grid is wider than
 the screen and you'll be scrolling sideways.
@@ -108,6 +113,10 @@ the screen and you'll be scrolling sideways.
 The tables come from months of community mission logs and match the game as of August
 2026. If EA changes the rotation, open an issue — or fix it yourself: the mission data
 and the anchor date are plain JavaScript near the bottom of `index.html`.
+
+## Version
+
+**v1.1.0** — see [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## License
 

@@ -350,10 +350,52 @@
 </div>
 
 <script>
-        // Active filters tracking (type-crew-modes is intentionally omitted to hide by default)
-    let activeFilters = new Set(["type-crew", "type-ugr", "type-se", "type-1day", "type-2day", "type-3day"]);
+    const FILTER_STORAGE_KEY = "nfsnl-mission-calendar.filters";
+
+    function allFilterTypes() {
+        return [...document.querySelectorAll(".filter-cb")].map(cb => cb.getAttribute("data-filter"));
+    }
+
+    // Defaults come from the `checked` attributes in the markup, so the HTML stays
+    // the single source of truth for the initial state (type-crew-modes is off).
+    function defaultFilters() {
+        return new Set([...document.querySelectorAll(".filter-cb")]
+            .filter(cb => cb.checked)
+            .map(cb => cb.getAttribute("data-filter")));
+    }
+
+    function loadFilters() {
+        try {
+            const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+            if (raw === null) return defaultFilters();
+            const stored = JSON.parse(raw);
+            if (!Array.isArray(stored)) return defaultFilters();
+            // Drop unknown types so a renamed category can't resurrect a filter
+            // that no longer has a checkbox. An empty array is a valid state
+            // (user unchecked everything) and is kept as-is.
+            const known = new Set(allFilterTypes());
+            return new Set(stored.filter(t => known.has(t)));
+        } catch (e) {
+            // Private browsing / storage disabled / corrupt JSON.
+            return defaultFilters();
+        }
+    }
+
+    function saveFilters() {
+        try {
+            localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify([...activeFilters]));
+        } catch (e) {
+            // Storage unavailable: the session still works, it just won't persist.
+        }
+    }
+
+    // Active filters tracking (type-crew-modes is intentionally omitted to hide by default)
+    let activeFilters = loadFilters();
 
     document.querySelectorAll(".filter-cb").forEach(cb => {
+        // Reflect the restored state back into the checkbox.
+        cb.checked = activeFilters.has(cb.getAttribute("data-filter"));
+
         cb.addEventListener("change", (e) => {
             const filterType = e.target.getAttribute("data-filter");
             if (e.target.checked) {
@@ -361,6 +403,7 @@
             } else {
                 activeFilters.delete(filterType);
             }
+            saveFilters();
             renderCalendar();
         });
     });
