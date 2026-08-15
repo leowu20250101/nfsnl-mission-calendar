@@ -17,8 +17,8 @@ future, and plan around the missions before they arrive.
 - **Any month, any year.** Hit Next as far ahead as you like — nothing is hardcoded.
 - **Missions shown as bars.** A 5-day crew event is drawn across all five days, so you
   can see at a glance what overlaps with what and how much time is left.
-- **Today is highlighted** using the game's real reset moment (02:30 UTC+8), not your
-  device's midnight — so the "current" mission is right wherever you are.
+- **Today is highlighted** using the game's global reset (18:30 UTC), not your device's
+  midnight — so the "current" mission is right wherever you are.
 - **Filters in the sidebar.** Untick the mission types you don't chase. Crew missions
   locked to a mode (UGR / Tuner Trials / Special Event) start hidden.
 - **Week numbers** down the left edge, matching Apple Calendar and any other ISO
@@ -98,7 +98,10 @@ airtime 60s**, the 3-day tasks want **near miss 30 / airtime 30s**.
 ## Running it yourself
 
 The whole thing is one `index.html` — no build, no dependencies, no tracking. Download
-it and open it in any browser, on a laptop or a phone, online or off.
+it and open it in any browser, online or off.
+
+It's built for a desktop-sized window. It opens on a phone, but the grid is wider than
+the screen and you'll be scrolling sideways.
 
 ## If the rotation ever shifts
 

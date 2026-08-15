@@ -240,14 +240,30 @@
 
         /* Mobile RWD */
         @media (max-width: 768px) {
-            body { padding: 0; }
-            .calendar-window { flex-direction: column; border-radius: 0; }
+            /* The desktop layout pins the window to 100vh and hides the overflow, which
+               on a phone leaves the later weeks unreachable. Here the page itself does
+               the vertical scrolling and the grid only scrolls sideways. */
+            body { padding: 0; display: block; height: auto; min-height: 100vh; }
+            .calendar-window {
+                height: auto;
+                min-height: 100vh;
+                max-width: none;
+                flex-direction: column;
+                border-radius: 0;
+                box-shadow: none;
+                overflow: visible;
+            }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #111; padding: 15px; box-sizing: border-box; }
             .mac-controls { display: none; }
             .sidebar-section { padding: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
             .sidebar-title { width: 100%; margin-bottom: 5px; }
             .filter-item { padding: 0; margin-right: 5px; }
-            
+
+            /* Keep the month title and Prev/Today/Next reachable while scrolling. */
+            .toolbar { position: sticky; top: 0; z-index: 5; background-color: var(--bg-window); }
+
+            .scroll-wrapper { flex-grow: 0; overflow-x: auto; overflow-y: hidden; }
+            .week-row { flex: 0 0 auto; } /* keep each row's min-height instead of shrinking to fit */
             .grid-header, .calendar-body { min-width: 800px; }
         }
 
