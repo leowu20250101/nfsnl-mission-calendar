@@ -17,8 +17,9 @@ future, and plan around the missions before they arrive.
 - **Any month, any year.** Hit Next as far ahead as you like — nothing is hardcoded.
 - **Missions shown as bars.** A 5-day crew event is drawn across all five days, so you
   can see at a glance what overlaps with what and how much time is left.
-- **Today is highlighted** using the game's global reset (18:30 UTC), not your device's
-  midnight — so the "current" mission is right wherever you are.
+- **Missions sit on the day they start for you.** The game rolls over at 18:30 UTC,
+  which is the evening before in Europe and the Americas — see
+  [Time zones](#time-zones). Whichever mission is running right now is filled in solid.
 - **Filters in the sidebar, and they stick.** Untick the mission types you don't chase
   and the calendar remembers next time. Crew missions locked to a mode (UGR / Tuner
   Trials / Special Event) start hidden.
@@ -41,6 +42,22 @@ or off:
 | 🟤 Brown | Crew (UGR / TT / SE) | Crew missions tied to one mode — hidden by default |
 
 The `[40 SC]` on each bar is that mission's reward.
+
+## Time zones
+
+Missions roll over at **18:30 UTC**, everywhere at once. That is nobody's midnight, so
+every mission straddles two of your calendar days — and this calendar draws each one on
+the day it **starts where you are**.
+
+The set everyone calls *Monday's* missions goes live 18:30 UTC on Sunday. That is
+Monday 02:30 in Taipei, but Sunday 20:30 in Berlin and Sunday 11:30 in Los Angeles — so
+in Europe and the Americas it sits on **Sunday**, the evening you actually get it.
+
+The cutoff is UTC+5:30. East of it the rollover clears midnight and everything matches
+the weekday names below. West of it, read every weekday in the rotation tables as one
+day later than the column your calendar draws it in.
+
+Hover any bar for the exact hours it opens and closes in your own time.
 
 ## The rotation
 
@@ -110,13 +127,13 @@ the screen and you'll be scrolling sideways.
 
 ## If the rotation ever shifts
 
-The tables come from months of community mission logs and match the game as of August
-2026. If EA changes the rotation, open an issue — or fix it yourself: the mission data
+The tables come from months of community mission logs and match the game as of
+September 2026. If EA changes the rotation, open an issue — or fix it yourself: the mission data
 and the anchor date are plain JavaScript near the bottom of `index.html`.
 
 ## Version
 
-**v1.1.0** — see [CHANGELOG.md](CHANGELOG.md) for what changed.
+**v1.2.0** — see [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 ## License
 

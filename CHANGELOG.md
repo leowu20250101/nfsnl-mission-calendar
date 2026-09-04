@@ -6,6 +6,49 @@ This project follows [Semantic Versioning](https://semver.org/). Because the cal
 is a single static page with no API, "breaking" is read as a change to the mission
 rotation the calendar predicts, or to previously saved local state.
 
+## [1.2.0] — 2026-09-04
+
+Reported by a player in Europe: *"The missions begin at 18:00 UTC the day before you
+have them listed. People in Europe start the missions the evening before you have
+listed in your calendar."* They were right about the day — the rollover time is 18:30
+UTC, not 18:00, but everything west of UTC+5:30 was indeed getting each mission an
+evening before the calendar drew it.
+
+### Changed
+
+- **Missions are now drawn on the day they start in your own time zone.** The rollover
+  is 18:30 UTC worldwide, which clears midnight only at UTC+5:30 and east. For viewers
+  in Europe, Africa and the Americas every mission bar therefore moves one day earlier
+  than in v1.1.0 — onto the evening they actually get it. Asia and Oceania are
+  unchanged. The rotation itself is untouched; only which cell a mission is drawn in.
+
+### Fixed
+
+- The whole grid was off by one day at UTC−6 and west (all of the US Pacific and
+  Mountain zones, Hawaii). Mission days were derived from *local noon* minus the
+  anchor, which silently assigns each mission to whichever local day it overlaps most —
+  a rule that flips at UTC−6. Mission days now come from the rollover instant itself,
+  so there is no hidden boundary and no timezone sees a different rotation.
+- Today's date circle is once again the viewer's own date. It had been keyed to the
+  mission rollover, which put the circle on the wrong cell for anyone whose local day
+  and mission day disagreed.
+
+### Added
+
+- The mission running **right now** is filled in solid, and every other bar is washed
+  out — matching how Calendar renders selected and unselected events in dark mode.
+  A multi-day mission stays filled across all of its segments, including where it
+  wraps to the next week row.
+  - The washed-out variant is not a guess: it was measured off Calendar's own event
+    bars, and comes out as hue unchanged, saturation ×0.82, brightness ×0.39.
+  - Mission colors are now macOS **dark**-appearance NSColor values, read from AppKit.
+    They were light-appearance values before, which is why several bars read too dark.
+  - White text on a filled bar is swapped for black on yellow, green and orange, where
+    white drops under 3:1. Calendar uses white on all of them; on yellow that is a
+    1.4:1 contrast and genuinely unreadable, so this one detail departs from it.
+- Hovering a mission bar shows its real start and end instant in your local time,
+  e.g. `Sun 20:30 → Mon 20:30 (your time)`.
+
 ## [1.1.0] — 2026-08-15
 
 ### Added
@@ -49,5 +92,3 @@ First public release, published to GitHub Pages.
 - ISO week numbers down the left edge, matching Apple Calendar.
 - Today's highlight keyed to the game's 18:30 UTC global reset rather than local
   midnight, so the current mission is correct in every timezone.
-- `spec.md` documenting the rotation and the rendering rules; `history/` holding the
-  community mission logs the rotation was derived from.

@@ -21,14 +21,17 @@
             --mac-min: #ffbd2e;
             --mac-max: #27c93f;
 
-            /* Mission Type Colors - Apple Precedence Order */
-            --mac-brown: #a2845e;
-            --mac-yellow: #ffcc00;
-            --mac-blue: #007aff;
-            --mac-green: #34c759;
-            --mac-red: #ff3b30;
-            --mac-purple: #af52de;
-            --mac-orange: #ff9500;
+            /* Mission Type Colors - Apple Precedence Order.
+               These are macOS dark-appearance NSColor values, read off AppKit rather
+               than copied from a color table: the published HIG charts are a revision
+               behind (they still list #0A84FF for blue, #BF5AF2 for purple). */
+            --mac-brown: #b78a66;
+            --mac-yellow: #ffd600;
+            --mac-blue: #0091ff;
+            --mac-green: #30d158;
+            --mac-red: #ff4245;
+            --mac-purple: #db34f2;
+            --mac-orange: #ff9230;
         }
 
         body {
@@ -205,17 +208,24 @@
             font-weight: 500;
             padding: 0 6px;
             border-radius: 4px;
-            color: #fff;
+            background-color: var(--evt-wash);
+            color: var(--evt-fill);
             pointer-events: auto;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             box-sizing: border-box;
             cursor: pointer;
-            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
         }
 
-        .event-span:hover { filter: brightness(1.1); }
+        .event-span:hover { filter: brightness(1.15); }
+
+        /* The mission period running right now is filled solid, the way Calendar
+           draws a selected event; everything else stays washed out. */
+        .event-span.active-now {
+            background-color: var(--evt-fill);
+            color: var(--evt-on-fill, #fff);
+        }
 
         /* Modifier classes for spans that break across weeks */
         .event-span.no-left-radius {
@@ -229,14 +239,22 @@
             border-right: none;
         }
 
-        /* Background Colors mapping */
-        .type-crew-modes { background-color: var(--mac-brown); color: #fff; }
-        .type-crew { background-color: var(--mac-yellow); color: #000; }
-        .type-ugr { background-color: var(--mac-blue); }
-        .type-se { background-color: var(--mac-green); }
-        .type-1day { background-color: var(--mac-red); }
-        .type-2day { background-color: var(--mac-purple); }
-        .type-3day { background-color: var(--mac-orange); }
+        /* Mission type colors, following how Calendar paints events in dark mode.
+           Measured from Calendar's own bars: an unselected event keeps its hue but
+           drops to saturation x0.82 and brightness x0.39, and takes the full color
+           as its text; a selected event is the full color. Each --evt-wash below is
+           that transform applied to its --evt-fill.
+           --evt-on-fill defaults to white and is overridden to black on the three
+           colors where white falls under 3:1. Calendar itself uses white even on
+           yellow, where it is genuinely hard to read - this is the one place the
+           calendar deliberately parts company with it. */
+        .type-crew-modes { --evt-fill: var(--mac-brown);  --evt-wash: #47392d; }
+        .type-crew       { --evt-fill: var(--mac-yellow); --evt-wash: #635612; --evt-on-fill: #000; }
+        .type-ugr        { --evt-fill: var(--mac-blue);   --evt-wash: #124063; }
+        .type-se         { --evt-fill: var(--mac-green);  --evt-wash: #1e522b; --evt-on-fill: #000; }
+        .type-1day       { --evt-fill: var(--mac-red);    --evt-wash: #632728; }
+        .type-2day       { --evt-fill: var(--mac-purple); --evt-wash: #57225e; }
+        .type-3day       { --evt-fill: var(--mac-orange); --evt-wash: #634121; --evt-on-fill: #000; }
 
         /* Mobile RWD */
         @media (max-width: 768px) {
@@ -408,8 +426,12 @@
         });
     });
 
-    // Global anchor: Sunday Aug 9, 2026 18:30 UTC
-    // This is the exact moment the "Monday" mission starts globally (02:30 AM Taiwan time).
+    // Global anchor: Sunday Aug 9, 2026 18:30 UTC.
+    // This is the exact moment the "Monday" mission starts globally - 02:30 Monday in
+    // Taiwan, but still 20:30 Sunday in Berlin and 11:30 Sunday in Los Angeles. The
+    // weekday names throughout this file are the ones the community mission logs use;
+    // which calendar cell a mission lands in is decided per viewer by
+    // missionsStartingOn() below.
     const anchorTimestamp = Date.UTC(2026, 7, 9, 18, 30, 0);
     
     function mod(n, m) { return ((n % m) + m) % m; }
@@ -473,10 +495,39 @@
 
     let currentDate = new Date(); 
     
-    function isActiveMission(missionIndex) {
-        const currentMissionIndex = Math.floor((Date.now() - anchorTimestamp) / 86400000);
-        return missionIndex === currentMissionIndex;
+    // A mission period lasts 24h and begins at this exact instant, worldwide.
+    function missionStartTs(missionIndex) {
+        return anchorTimestamp + missionIndex * 86400000;
     }
+
+    function currentMissionIndex() {
+        return Math.floor((Date.now() - anchorTimestamp) / 86400000);
+    }
+
+    // Which mission periods begin on this local calendar day? The rollover is
+    // 18:30 UTC, which is still the evening before for everyone west of UTC+5:30,
+    // so those players get a day's missions one calendar day earlier than players
+    // in Asia do. Anchoring on the local start day is what makes the grid match
+    // what each viewer actually sees in game.
+    // Exactly one period starts per local day, except across a DST shift, where
+    // it can be two or none - hence a list rather than a single index.
+    function missionsStartingOn(d) {
+        const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+        const found = [];
+        for (let i = Math.ceil((dayStart - anchorTimestamp) / 86400000); missionStartTs(i) < dayEnd; i++) {
+            found.push(i);
+        }
+        return found;
+    }
+
+    function isSameLocalDay(a, b) {
+        return a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate();
+    }
+
+    const startTimeFmt = new Intl.DateTimeFormat(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
 
     function getISOWeekNumber(d) {
         const date = new Date(d.getTime());
@@ -495,6 +546,7 @@
 
         const body = document.getElementById("calendar-body");
         body.innerHTML = '';
+        const todayLocal = new Date();
 
         const firstDayOfMonth = new Date(year, month, 1);
         let startDay = firstDayOfMonth.getDay();
@@ -512,21 +564,23 @@
         let allEvents = [];
         let curr = new Date(genStart);
         let eventIdCounter = 0;
+        const nowIndex = currentMissionIndex();
         while(curr < genEnd) {
-            let currNoon = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), 12, 0, 0);
-            let diffMs = currNoon.getTime() - anchorTimestamp;
-            let missionIndex = Math.floor(diffMs / 86400000);
-            const missions = getMissionsWithDuration(missionIndex);
-            missions.forEach(m => {
-                if(activeFilters.has(m.c)) {
-                    allEvents.push({
-                        id: eventIdCounter++,
-                        title: m.t,
-                        cls: m.c,
-                        start: new Date(curr),
-                        duration: m.d
-                    });
-                }
+            missionsStartingOn(curr).forEach(missionIndex => {
+                getMissionsWithDuration(missionIndex).forEach(m => {
+                    if(activeFilters.has(m.c)) {
+                        allEvents.push({
+                            id: eventIdCounter++,
+                            title: m.t,
+                            cls: m.c,
+                            start: new Date(curr),
+                            duration: m.d,
+                            startTs: missionStartTs(missionIndex),
+                            endTs: missionStartTs(missionIndex + m.d),
+                            active: nowIndex >= missionIndex && nowIndex < missionIndex + m.d
+                        });
+                    }
+                });
             });
             curr.setDate(curr.getDate() + 1);
         }
@@ -598,10 +652,9 @@
             for(let d=0; d<7; d++) {
                 let isOtherMonth = currDay.getMonth() !== month;
                 
-                let cellNoon = new Date(currDay.getFullYear(), currDay.getMonth(), currDay.getDate(), 12, 0, 0);
-                let diffMs = cellNoon.getTime() - anchorTimestamp;
-                let missionIndex = Math.floor(diffMs / 86400000);
-                let isTodayBool = isActiveMission(missionIndex);
+                // The date circle marks the viewer's own today; the mission running
+                // right now is marked on its own bar instead (.active-now).
+                let isTodayBool = isSameLocalDay(currDay, todayLocal);
                 let todayCls = isTodayBool ? "today" : "";
                 
                 weekHtml += `<div class="cell ${isOtherMonth ? 'other-month' : ''}">
@@ -631,12 +684,15 @@
 
                 let widthStr = seg.continuingTo ? `calc(${widthPercent}%)` : `calc(${widthPercent}% - 4px)`;
                 
+                if(seg.evt.active) extraClass += ' active-now';
+
                 // Show title even if it's continued from previous week (wrapping to Monday)
                 let titleStr = seg.evt.title;
+                let tooltip = `${seg.evt.title}\n${startTimeFmt.format(new Date(seg.evt.startTs))} \u2192 ${startTimeFmt.format(new Date(seg.evt.endTs))} (your time)`;
 
                 weekHtml += `<div class="event-span ${seg.evt.cls} ${extraClass}" 
                     style="left: ${leftPercent}%; width: ${widthStr}; top: ${topPx}px;"
-                    title="${seg.evt.title}">
+                    title="${tooltip}">
                     ${titleStr}
                 </div>`;
             });
